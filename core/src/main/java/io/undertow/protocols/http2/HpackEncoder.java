@@ -60,8 +60,8 @@ public class HpackEncoder {
     public static final HpackHeaderFunction DEFAULT_HEADER_FUNCTION = new HpackHeaderFunction() {
         @Override
         public boolean shouldUseIndexing(HttpString headerName, String value) {
-            //content length and date change all the time
-            //no need to index them, or they will churn the table
+//content length and date change all the time
+//no need to index them, or they will churn the table
             return !headerName.equals(Headers.CONTENT_LENGTH) && !headerName.equals(Headers.DATE);
         }
 
@@ -156,13 +156,14 @@ public class HpackEncoder {
         long it = headersIterator;
         if (headersIterator == -1) {
             handleTableSizeChange(target);
-            //new headers map
+//new headers map
             it = headers.fastIterate();
             currentHeaders = headers;
         } else {
             if (headers != currentHeaders) {
                 throw new IllegalStateException();
             }
+            it = headers.fiNext(it);
         }
         while (it != -1) {
             HeaderValues values = headers.fiCurrent(it);
@@ -177,7 +178,7 @@ public class HpackEncoder {
                 }
             }
             if(SKIP.contains(values.getHeaderName())) {
-                //ignore connection specific headers
+//ignore connection specific headers
                 skip = true;
             }
             if (!skip) {
@@ -207,25 +208,25 @@ public class HpackEncoder {
                     }
                     boolean canIndex = hpackHeaderFunction.shouldUseIndexing(headerName, val) && (headerName.length() + val.length() + 32) < maxTableSize; //only index if it will fit
                     if (tableEntry == null && canIndex) {
-                        //add the entry to the dynamic table
+//add the entry to the dynamic table
                         current.put((byte) (1 << 6));
                         writeHuffmanEncodableName(current, headerName);
                         writeHuffmanEncodableValue(current, headerName, val);
                         addToDynamicTable(headerName, val);
                     } else if (tableEntry == null) {
-                        //literal never indexed
+//literal never indexed
                         current.put((byte) (1 << 4));
                         writeHuffmanEncodableName(current, headerName);
                         writeHuffmanEncodableValue(current, headerName, val);
                     } else {
-                        //so we know something is already in the table
+//so we know something is already in the table
                         if (val.equals(tableEntry.value)) {
-                            //the whole thing is in the table
+//the whole thing is in the table
                             current.put((byte) (1 << 7));
                             encodeInteger(current, tableEntry.getPosition(), 7);
                         } else {
                             if (canIndex) {
-                                //add the entry to the dynamic table
+//add the entry to the dynamic table
                                 current.put((byte) (1 << 6));
                                 encodeInteger(current, tableEntry.getPosition(), 6);
                                 writeHuffmanEncodableValue(current, headerName, val);
@@ -239,7 +240,6 @@ public class HpackEncoder {
                         }
                     }
                     if(overflowing) {
-                        it = headers.fiNext(it);
                         this.headersIterator = it;
                         this.overflowLength = current.position();
                         return State.OVERFLOW;
@@ -302,7 +302,7 @@ public class HpackEncoder {
         currentTableSize += d.size;
         runEvictionIfRequired();
         if (entryPositionCounter == Integer.MAX_VALUE) {
-            //prevent rollover
+//prevent rollover
             preventPositionRollover();
         }
 
@@ -310,8 +310,8 @@ public class HpackEncoder {
 
 
     private void preventPositionRollover() {
-        //if the position counter is about to roll over we iterate all the table entries
-        //and set their position to their actual position
+//if the position counter is about to roll over we iterate all the table entries
+//and set their position to their actual position
         for (Map.Entry<HttpString, List<TableEntry>> entry : dynamicTable.entrySet()) {
             for (TableEntry t : entry.getValue()) {
                 t.position = t.getPosition();
